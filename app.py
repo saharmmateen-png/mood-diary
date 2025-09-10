@@ -1,66 +1,137 @@
 import streamlit as st
-import pandas as pd
 from datetime import datetime
-import json
-import os
+import pandas as pd
+import random
+import time
 
-st.set_page_config(page_title="Mood Diary Chat", page_icon="📝", layout="centered")
-st.title("Mood Diary Chat")
-st.write("Chat with your personal mood companion. Type freely and get responses!")
-
-# -----------------------------
-# Files for storage
-# -----------------------------
-DATA_FILE = "user_history.json"  # chat messages per user
-CSV_FILE = "mood_log.csv"        # structured mood history
+st.set_page_config(page_title="LatnemAI Chat", page_icon="🤖", layout="wide")
+st.title("LatnemAI Chat")
+st.write("Chat with LatnemAI. Your messages are remembered only while this tab is open. It responds in Gen Z / Gen Alpha style!")
 
 # -----------------------------
-# Load or create CSV mood log
+# Initialize session memory
 # -----------------------------
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# -----------------------------
+# Optional CSV for mood trends
+# -----------------------------
+CSV_FILE = "mood_log.csv"
 try:
     df = pd.read_csv(CSV_FILE)
 except:
     df = pd.DataFrame(columns=["Date","Mood","Notes"])
 
 # -----------------------------
-# Initialize session state for chat
+# Define Gen Z / Gen Alpha adaptive responses
 # -----------------------------
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+response_dict = {
+    "sad": [
+        "ahh nooo 😢 that sucks fr… wanna vent?",
+        "yikes… I feel you. spill the tea ☕",
+        "lowkey sad vibes, but I’m here 💜"
+    ],
+    "angry": [
+        "fr fr that’s mad annoying 😡",
+        "yikes… wanna rant? I got you",
+        "ugh I feel you 😤 take a sec to breathe tho"
+    ],
+    "anxious": [
+        "aww that’s stressful fr 😰 deep breaths",
+        "lowkey worried vibes… what’s on your mind?",
+        "fr fr I get it, this stuff sucks 😓"
+    ],
+    "happy": [
+        "yasss!!! that’s hype 😎 tell me more",
+        "omg fr fr happy vibes only ✨",
+        "woohoo 🥳 love that for you!"
+    ],
+    "excited": [
+        "omg hypeee 😆 spill what’s going on!",
+        "yasss fr fr can’t wait to hear more 😎",
+        "woohoo 🥳 tell me everything!"
+    ],
+    "lonely": [
+        "aww 💜 you’re not alone, I got you",
+        "lowkey lonely vibes… I’m here 😔",
+        "spill the tea ☕, I’m listening"
+    ],
+    "confused": [
+        "hmm 🤔 that’s tricky… can you clarify?",
+        "lowkey confused too 😕 explain a bit more?",
+        "fr fr I feel you, what’s confusing exactly?"
+    ],
+    "bored": [
+        "meh… I feel that fr 😅 wanna chat?",
+        "lowkey bored too 😐 any ideas?",
+        "fr fr boredom sucks, spill something fun"
+    ],
+    "grateful": [
+        "aww that’s wholesome 😭💖",
+        "fr fr gratitude vibes, I feel that",
+        "that’s cute af, tell me more 🙏"
+    ],
+    "neutral": [
+        "meh… I feel that fr",
+        "same here… wanna chat or nah?",
+        "lowkey chill vibes 😎"
+    ]
+}
 
-# Load previous chat history if exists
-if os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "r") as f:
-        try:
-            data = json.load(f)
-            st.session_state.messages = data.get("messages", [])
-        except:
-            st.session_state.messages = []
+emoji_mood_map = {
+    "😢": "sad",
+    "😡": "angry",
+    "😰": "anxious",
+    "😊": "happy",
+    "😐": "neutral",
+    "😄": "excited",
+    "😔": "lonely",
+    "😕": "confused",
+    "😴": "bored",
+    "🙏": "grateful"
+}
 
 # -----------------------------
-# User chat input
+# Mood detection from text + emoji
+# -----------------------------
+def detect_mood(text):
+    text_lower = text.lower()
+    for emoji, mood in emoji_mood_map.items():
+        if emoji in text:
+            return mood
+    if any(word in text_lower for word in ["sad", "depressed", "unhappy", "down"]):
+        return "sad"
+    elif any(word in text_lower for word in ["angry", "mad", "frustrated", "annoyed"]):
+        return "angry"
+    elif any(word in text_lower for word in ["anxious", "nervous", "worried", "stressed"]):
+        return "anxious"
+    elif any(word in text_lower for word in ["happy", "good", "great", "joy"]):
+        return "happy"
+    elif any(word in text_lower for word in ["excited", "hype"]):
+        return "excited"
+    elif any(word in text_lower for word in ["lonely", "alone"]):
+        return "lonely"
+    elif any(word in text_lower for word in ["confused", "lost", "unsure"]):
+        return "confused"
+    elif any(word in text_lower for word in ["bored", "unmotivated", "tired"]):
+        return "bored"
+    elif any(word in text_lower for word in ["grateful", "thankful"]):
+        return "grateful"
+    else:
+        return "neutral"
+
+# -----------------------------
+# User input
 # -----------------------------
 user_input = st.text_input("Type your message here:")
 
 if st.button("Send") and user_input:
-    # Record timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # -----------------------------
-    # Optional: basic mood detection
-    # -----------------------------
-    text_lower = user_input.lower()
-    if any(word in text_lower for word in ["happy", "good", "great", "excited"]):
-        mood = "😊 Happy"
-    elif any(word in text_lower for word in ["sad", "depressed", "unhappy"]):
-        mood = "😔 Sad"
-    elif any(word in text_lower for word in ["angry", "mad", "frustrated"]):
-        mood = "😡 Angry"
-    elif any(word in text_lower for word in ["anxious", "nervous", "worried"]):
-        mood = "😰 Anxious"
-    else:
-        mood = "😐 Neutral"
-
+    
+    # Detect mood
+    mood = detect_mood(user_input)
+    
     # Save user message
     st.session_state.messages.append({
         "role": "user",
@@ -68,44 +139,77 @@ if st.button("Send") and user_input:
         "mood": mood,
         "timestamp": timestamp
     })
-
-    # Save to CSV for mood tracking
+    
+    # Save to CSV for trends (optional)
     new_entry = pd.DataFrame({'Date':[timestamp], 'Mood':[mood], 'Notes':[user_input]})
     df = pd.concat([df, new_entry], ignore_index=True)
     df.to_csv(CSV_FILE, index=False)
-
-    # -----------------------------
-    # AI response (adaptive)
-    # -----------------------------
-    if mood in ["😔 Sad", "😰 Anxious", "😡 Angry"]:
-        response = "I hear you. It's okay to feel this way. Can you tell me more about it?"
-    elif mood == "😊 Happy":
-        response = "That's wonderful! What made you feel this way?"
-    else:
-        response = "Thanks for sharing. How else are you feeling today?"
+    
+    # Simulate LatnemAI typing
+    st.session_state.messages.append({"role": "ai", "content": "LatnemAI is typing...", "timestamp": timestamp})
+    time.sleep(random.uniform(0.8, 1.5))
+    st.session_state.messages.pop()
+    
+    # Generate adaptive Gen Z response
+    ai_response = random.choice(response_dict[mood])
+    
+    # Reference up to 2 previous user messages if negative mood
+    if mood in ["sad", "angry", "anxious", "lonely", "confused"]:
+        previous_msgs = [m["content"] for m in st.session_state.messages if m["role"]=="user"]
+        if len(previous_msgs) > 1:
+            ai_response += f" btw, you said before: '{previous_msgs[-2]}'… wanna tell me more?"
 
     st.session_state.messages.append({
         "role": "ai",
-        "content": response,
+        "content": ai_response,
         "timestamp": timestamp
     })
 
-    # Save chat history
-    with open(DATA_FILE, "w") as f:
-        json.dump({"messages": st.session_state.messages}, f, indent=2)
+# -----------------------------
+# Display chat in scrollable Gen Z style bubbles
+# -----------------------------
+st.markdown("""
+<style>
+.user-msg {
+    background-color: #DCF8C6;
+    padding: 12px;
+    border-radius: 12px;
+    margin: 5px 0px;
+    text-align: right;
+}
+.ai-msg {
+    background-color: #E6E6FA;
+    padding: 12px;
+    border-radius: 12px;
+    margin: 5px 0px;
+    text-align: left;
+}
+.chat-container {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background-color: #f9f9f9;
+}
+.timestamp {
+    font-size: 0.7em;
+    color: gray;
+}
+</style>
+""", unsafe_allow_html=True)
 
-# -----------------------------
-# Display chat messages
-# -----------------------------
-st.write("### Conversation")
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 for msg in st.session_state.messages:
+    time_label = msg["timestamp"].split()[1]  # HH:MM:SS
     if msg["role"] == "user":
-        st.markdown(f"**You ({msg['mood']}):** {msg['content']}")
+        st.markdown(f'<div class="user-msg"><b>You ({msg["mood"]}):</b> {msg["content"]} <div class="timestamp">{time_label}</div></div>', unsafe_allow_html=True)
     else:
-        st.markdown(f"**AI:** {msg['content']}")
+        st.markdown(f'<div class="ai-msg"><b>LatnemAI:</b> {msg["content"]} <div class="timestamp">{time_label}</div></div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 # -----------------------------
-# Display mood chart
+# Mood chart (optional)
 # -----------------------------
 if not df.empty:
     st.subheader("Mood History")
