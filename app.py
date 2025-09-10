@@ -5,7 +5,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="LatnemAI Chat", page_icon="🤖", layout="wide")
 st.title("LatnemAI Chat")
-st.write("Chat with LatnemAI. Your messages are remembered only while this tab is open!")
+st.write("Your messages are remembered only while this tab is open. Chat like texting a friend!")
 
 # -----------------------------
 # Initialize session memory
@@ -14,7 +14,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # -----------------------------
-# Gen Z / Gen Alpha adaptive responses
+# Gen Z / Gen Alpha responses
 # -----------------------------
 response_dict = {
     "sad": [
@@ -90,7 +90,7 @@ basic_responses = {
 }
 
 # -----------------------------
-# Mood detection from text + emoji
+# Mood detection
 # -----------------------------
 def detect_mood(text):
     text_lower = text.lower()
@@ -119,65 +119,21 @@ def detect_mood(text):
         return "neutral"
 
 # -----------------------------
-# User input
-# -----------------------------
-user_input = st.text_input("Type your message here:")
-
-if st.button("Send") and user_input:
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    
-    # Check for basic greetings first
-    matched_basic = None
-    for key in basic_responses:
-        if key in user_input.lower():
-            matched_basic = key
-            break
-    
-    # Determine AI response
-    if matched_basic:
-        ai_response = random.choice(basic_responses[matched_basic])
-        mood = detect_mood(user_input)
-    else:
-        mood = detect_mood(user_input)
-        ai_response = random.choice(response_dict[mood])
-        # Reference previous user message for context if mood negative
-        if mood in ["sad", "angry", "anxious", "lonely", "confused"]:
-            prev_user_msgs = [m["content"] for m in st.session_state.messages if m["role"]=="user"]
-            if len(prev_user_msgs) > 0:
-                ai_response += f" btw, before you said: '{prev_user_msgs[-1]}', wanna tell me more?"
-    
-    # Save messages in session only
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input,
-        "mood": mood,
-        "timestamp": timestamp
-    })
-    # Simulate typing
-    st.session_state.messages.append({"role": "ai", "content": "LatnemAI is typing...", "timestamp": timestamp})
-    time.sleep(random.uniform(0.8, 1.5))
-    st.session_state.messages.pop()
-    
-    st.session_state.messages.append({
-        "role": "ai",
-        "content": ai_response,
-        "timestamp": timestamp
-    })
-
-# -----------------------------
-# Display chat
+# CSS for chat bubbles
 # -----------------------------
 st.markdown("""
 <style>
 .user-msg {
-    background-color: #DCF8C6;
+    background-color: #a3d9a5;
+    color: #000;
     padding: 12px;
     border-radius: 12px;
     margin: 5px 0px;
     text-align: right;
 }
 .ai-msg {
-    background-color: #E6E6FA;
+    background-color: #c6c6ff;
+    color: #000;
     padding: 12px;
     border-radius: 12px;
     margin: 5px 0px;
@@ -198,10 +154,69 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(f'<div class="user-msg"><b>You ({msg["mood"]}):</b> {msg["content"]} <div class="timestamp">{msg["timestamp"]}</div></div>', unsafe_allow_html=True)
+chat_placeholder = st.empty()
+
+# -----------------------------
+# Display chat
+# -----------------------------
+def display_chat():
+    with chat_placeholder.container():
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        for msg in st.session_state.messages:
+            if msg["role"] == "user":
+                st.markdown(f'<div class="user-msg"><b>You ({msg["mood"]}):</b> {msg["content"]} <div class="timestamp">{msg["timestamp"]}</div></div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="ai-msg"><b>LatnemAI:</b> {msg["content"]} <div class="timestamp">{msg["timestamp"]}</div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+display_chat()
+
+# -----------------------------
+# Input at bottom
+# -----------------------------
+with st.form("chat_form", clear_on_submit=True):
+    user_input = st.text_input("Type your message here:", key="input")
+    submitted = st.form_submit_button("Send")
+
+if submitted and user_input:
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    
+    # Check for basic greetings
+    matched_basic = None
+    for key in basic_responses:
+        if key in user_input.lower():
+            matched_basic = key
+            break
+    
+    if matched_basic:
+        ai_response = random.choice(basic_responses[matched_basic])
+        mood = detect_mood(user_input)
     else:
-        st.markdown(f'<div class="ai-msg"><b>LatnemAI:</b> {msg["content"]} <div class="timestamp">{msg["timestamp"]}</div></div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+        mood = detect_mood(user_input)
+        ai_response = random.choice(response_dict[mood])
+        if mood in ["sad", "angry", "anxious", "lonely", "confused"]:
+            prev_user_msgs = [m["content"] for m in st.session_state.messages if m["role"]=="user"]
+            if len(prev_user_msgs) > 0:
+                ai_response += f" btw, before you said: '{prev_user_msgs[-1]}', wanna tell me more?"
+    
+    # Save messages in session only
+    st.session_state.messages.append({
+        "role": "user",
+        "content": user_input,
+        "mood": mood,
+        "timestamp": timestamp
+    })
+    
+    # Typing simulation
+    st.session_state.messages.append({"role": "ai", "content": "LatnemAI is typing...", "timestamp": timestamp})
+    display_chat()
+    time.sleep(random.uniform(0.8, 1.5))
+    st.session_state.messages.pop()
+    
+    st.session_state.messages.append({
+        "role": "ai",
+        "content": ai_response,
+        "timestamp": timestamp
+    })
+    
+    display_chat()
