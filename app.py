@@ -1,22 +1,18 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-from datetime import datetime, date
+from datetime import datetime
 import json
 import os
 
-# -----------------------------
-# Config
-# -----------------------------
 st.set_page_config(page_title="Mood Diary Chat", page_icon="📝", layout="centered")
 st.title("Mood Diary Chat")
-st.write("Share your thoughts and moods. I'll respond like a supportive companion!")
+st.write("Chat with your personal mood companion. Type freely and get responses!")
 
 # -----------------------------
 # Files for storage
 # -----------------------------
-DATA_FILE = "user_history.json"    # chat messages per user (private)
-CSV_FILE = "mood_log.csv"          # structured mood history
+DATA_FILE = "user_history.json"  # chat messages per user
+CSV_FILE = "mood_log.csv"        # structured mood history
 
 # -----------------------------
 # Load or create CSV mood log
@@ -24,7 +20,7 @@ CSV_FILE = "mood_log.csv"          # structured mood history
 try:
     df = pd.read_csv(CSV_FILE)
 except:
-    df = pd.DataFrame(columns=["Date", "Mood", "Notes"])
+    df = pd.DataFrame(columns=["Date","Mood","Notes"])
 
 # -----------------------------
 # Initialize session state for chat
@@ -42,49 +38,61 @@ if os.path.exists(DATA_FILE):
             st.session_state.messages = []
 
 # -----------------------------
-# Mood input
+# User chat input
 # -----------------------------
-moods = ["😊 Happy", "😐 Neutral", "😔 Sad", "😰 Anxious", "😡 Angry"]
-user_mood = st.selectbox("How are you feeling today?", moods)
-notes = st.text_area("Write about your day or your thoughts:")
+user_input = st.text_input("Type your message here:")
 
-if st.button("Send"):
-    today_str = date.today().strftime("%Y-%m-%d")
-    
-    # Save to CSV
-    new_entry = pd.DataFrame({'Date':[today_str], 'Mood':[user_mood], 'Notes':[notes]})
-    df = pd.concat([df, new_entry], ignore_index=True)
-    df.to_csv(CSV_FILE, index=False)
-    
-    # Save chat message
+if st.button("Send") and user_input:
+    # Record timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # -----------------------------
+    # Optional: basic mood detection
+    # -----------------------------
+    text_lower = user_input.lower()
+    if any(word in text_lower for word in ["happy", "good", "great", "excited"]):
+        mood = "😊 Happy"
+    elif any(word in text_lower for word in ["sad", "depressed", "unhappy"]):
+        mood = "😔 Sad"
+    elif any(word in text_lower for word in ["angry", "mad", "frustrated"]):
+        mood = "😡 Angry"
+    elif any(word in text_lower for word in ["anxious", "nervous", "worried"]):
+        mood = "😰 Anxious"
+    else:
+        mood = "😐 Neutral"
+
+    # Save user message
     st.session_state.messages.append({
         "role": "user",
-        "content": notes,
-        "mood": user_mood,
-        "timestamp": datetime.now().isoformat()
+        "content": user_input,
+        "mood": mood,
+        "timestamp": timestamp
     })
-    
+
+    # Save to CSV for mood tracking
+    new_entry = pd.DataFrame({'Date':[timestamp], 'Mood':[mood], 'Notes':[user_input]})
+    df = pd.concat([df, new_entry], ignore_index=True)
+    df.to_csv(CSV_FILE, index=False)
+
     # -----------------------------
-    # Adaptive AI response
+    # AI response (adaptive)
     # -----------------------------
-    if user_mood in ["😔 Sad", "😰 Anxious", "😡 Angry"]:
+    if mood in ["😔 Sad", "😰 Anxious", "😡 Angry"]:
         response = "I hear you. It's okay to feel this way. Can you tell me more about it?"
-    elif user_mood == "😊 Happy":
-        response = "That's great to hear! What made you feel happy today?"
+    elif mood == "😊 Happy":
+        response = "That's wonderful! What made you feel this way?"
     else:
-        response = f"I notice you are feeling {user_mood}. Can you share more about it?"
-    
+        response = "Thanks for sharing. How else are you feeling today?"
+
     st.session_state.messages.append({
         "role": "ai",
         "content": response,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": timestamp
     })
-    
-    # Save messages to JSON
+
+    # Save chat history
     with open(DATA_FILE, "w") as f:
         json.dump({"messages": st.session_state.messages}, f, indent=2)
-    
-    st.success("Your entry has been recorded!")
 
 # -----------------------------
 # Display chat messages
@@ -97,13 +105,11 @@ for msg in st.session_state.messages:
         st.markdown(f"**AI:** {msg['content']}")
 
 # -----------------------------
-# Display mood history and chart
+# Display mood chart
 # -----------------------------
 if not df.empty:
     st.subheader("Mood History")
     st.dataframe(df.sort_values("Date", ascending=False))
-    
     mood_count = df['Mood'].value_counts().reset_index()
     mood_count.columns = ['Mood','Count']
-    fig_pie = px.pie(mood_count, names='Mood', values='Count', title="Mood Distribution")
-    st.plotly_chart(fig_pie)
+    st.bar_chart(mood_count.set_index('Mood')['Count'])
