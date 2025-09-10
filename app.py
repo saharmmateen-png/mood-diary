@@ -1,12 +1,11 @@
 import streamlit as st
-from datetime import datetime
-import pandas as pd
 import random
 import time
+from datetime import datetime
 
 st.set_page_config(page_title="LatnemAI Chat", page_icon="🤖", layout="wide")
 st.title("LatnemAI Chat")
-st.write("Chat with LatnemAI. Your messages are remembered only while this tab is open. It responds in Gen Z / Gen Alpha style!")
+st.write("Chat with LatnemAI. Your messages are remembered only while this tab is open!")
 
 # -----------------------------
 # Initialize session memory
@@ -15,16 +14,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # -----------------------------
-# Optional CSV for mood trends
-# -----------------------------
-CSV_FILE = "mood_log.csv"
-try:
-    df = pd.read_csv(CSV_FILE)
-except:
-    df = pd.DataFrame(columns=["Date","Mood","Notes"])
-
-# -----------------------------
-# Define Gen Z / Gen Alpha adaptive responses
+# Gen Z / Gen Alpha adaptive responses
 # -----------------------------
 response_dict = {
     "sad": [
@@ -92,6 +82,13 @@ emoji_mood_map = {
     "🙏": "grateful"
 }
 
+basic_responses = {
+    "hi": ["Heyyy! 😎", "Yo! How’s it going?", "Hi hi! 😁"],
+    "hello": ["Heyy! ✨", "Hello hello! 😄", "Yo! What’s up?"],
+    "how are you": ["I’m vibin’ 😎 u?", "Good fr fr, how about you?", "Pretty chill 😌 u?"],
+    "what's up": ["Not much, just chillin’ 😏", "Same old, same old 😎 u?", "Vibin’ fr fr, u?"]
+}
+
 # -----------------------------
 # Mood detection from text + emoji
 # -----------------------------
@@ -127,38 +124,40 @@ def detect_mood(text):
 user_input = st.text_input("Type your message here:")
 
 if st.button("Send") and user_input:
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().strftime("%H:%M:%S")
     
-    # Detect mood
-    mood = detect_mood(user_input)
+    # Check for basic greetings first
+    matched_basic = None
+    for key in basic_responses:
+        if key in user_input.lower():
+            matched_basic = key
+            break
     
-    # Save user message
+    # Determine AI response
+    if matched_basic:
+        ai_response = random.choice(basic_responses[matched_basic])
+        mood = detect_mood(user_input)
+    else:
+        mood = detect_mood(user_input)
+        ai_response = random.choice(response_dict[mood])
+        # Reference previous user message for context if mood negative
+        if mood in ["sad", "angry", "anxious", "lonely", "confused"]:
+            prev_user_msgs = [m["content"] for m in st.session_state.messages if m["role"]=="user"]
+            if len(prev_user_msgs) > 0:
+                ai_response += f" btw, before you said: '{prev_user_msgs[-1]}', wanna tell me more?"
+    
+    # Save messages in session only
     st.session_state.messages.append({
         "role": "user",
         "content": user_input,
         "mood": mood,
         "timestamp": timestamp
     })
-    
-    # Save to CSV for trends (optional)
-    new_entry = pd.DataFrame({'Date':[timestamp], 'Mood':[mood], 'Notes':[user_input]})
-    df = pd.concat([df, new_entry], ignore_index=True)
-    df.to_csv(CSV_FILE, index=False)
-    
-    # Simulate LatnemAI typing
+    # Simulate typing
     st.session_state.messages.append({"role": "ai", "content": "LatnemAI is typing...", "timestamp": timestamp})
     time.sleep(random.uniform(0.8, 1.5))
     st.session_state.messages.pop()
     
-    # Generate adaptive Gen Z response
-    ai_response = random.choice(response_dict[mood])
-    
-    # Reference up to 2 previous user messages if negative mood
-    if mood in ["sad", "angry", "anxious", "lonely", "confused"]:
-        previous_msgs = [m["content"] for m in st.session_state.messages if m["role"]=="user"]
-        if len(previous_msgs) > 1:
-            ai_response += f" btw, you said before: '{previous_msgs[-2]}'… wanna tell me more?"
-
     st.session_state.messages.append({
         "role": "ai",
         "content": ai_response,
@@ -166,7 +165,7 @@ if st.button("Send") and user_input:
     })
 
 # -----------------------------
-# Display chat in scrollable Gen Z style bubbles
+# Display chat
 # -----------------------------
 st.markdown("""
 <style>
@@ -201,19 +200,8 @@ st.markdown("""
 
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 for msg in st.session_state.messages:
-    time_label = msg["timestamp"].split()[1]  # HH:MM:SS
     if msg["role"] == "user":
-        st.markdown(f'<div class="user-msg"><b>You ({msg["mood"]}):</b> {msg["content"]} <div class="timestamp">{time_label}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="user-msg"><b>You ({msg["mood"]}):</b> {msg["content"]} <div class="timestamp">{msg["timestamp"]}</div></div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="ai-msg"><b>LatnemAI:</b> {msg["content"]} <div class="timestamp">{time_label}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="ai-msg"><b>LatnemAI:</b> {msg["content"]} <div class="timestamp">{msg["timestamp"]}</div></div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
-
-# -----------------------------
-# Mood chart (optional)
-# -----------------------------
-if not df.empty:
-    st.subheader("Mood History")
-    st.dataframe(df.sort_values("Date", ascending=False))
-    mood_count = df['Mood'].value_counts().reset_index()
-    mood_count.columns = ['Mood','Count']
-    st.bar_chart(mood_count.set_index('Mood')['Count'])
