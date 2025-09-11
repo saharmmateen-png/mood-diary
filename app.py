@@ -5,7 +5,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="LatnemAI Chat", page_icon="🤖", layout="wide")
 st.title("LatnemAI Chat")
-st.write("Your messages are remembered only while this tab is open. Chat like texting a friend!")
+st.write("Your chat is private and only remembered while this tab is open. Talk to me like texting a friend.")
 
 # -----------------------------
 # Initialize session memory
@@ -14,109 +14,56 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # -----------------------------
-# Gen Z / Gen Alpha responses
+# Response libraries
 # -----------------------------
-response_dict = {
-    "sad": [
-        "ahh nooo 😢 that sucks fr… wanna vent?",
-        "yikes… I feel you. spill the tea ☕",
-        "lowkey sad vibes, but I’m here 💜"
-    ],
-    "angry": [
-        "fr fr that’s mad annoying 😡",
-        "yikes… wanna rant? I got you",
-        "ugh I feel you 😤 take a sec to breathe tho"
-    ],
-    "anxious": [
-        "aww that’s stressful fr 😰 deep breaths",
-        "lowkey worried vibes… what’s on your mind?",
-        "fr fr I get it, this stuff sucks 😓"
-    ],
-    "happy": [
-        "yasss!!! that’s hype 😎 tell me more",
-        "omg fr fr happy vibes only ✨",
-        "woohoo 🥳 love that for you!"
-    ],
-    "excited": [
-        "omg hypeee 😆 spill what’s going on!",
-        "yasss fr fr can’t wait to hear more 😎",
-        "woohoo 🥳 tell me everything!"
-    ],
-    "lonely": [
-        "aww 💜 you’re not alone, I got you",
-        "lowkey lonely vibes… I’m here 😔",
-        "spill the tea ☕, I’m listening"
-    ],
-    "confused": [
-        "hmm 🤔 that’s tricky… can you clarify?",
-        "lowkey confused too 😕 explain a bit more?",
-        "fr fr I feel you, what’s confusing exactly?"
-    ],
-    "bored": [
-        "meh… I feel that fr 😅 wanna chat?",
-        "lowkey bored too 😐 any ideas?",
-        "fr fr boredom sucks, spill something fun"
-    ],
-    "grateful": [
-        "aww that’s wholesome 😭💖",
-        "fr fr gratitude vibes, I feel that",
-        "that’s cute af, tell me more 🙏"
-    ],
-    "neutral": [
-        "meh… I feel that fr",
-        "same here… wanna chat or nah?",
-        "lowkey chill vibes 😎"
-    ]
-}
-
-emoji_mood_map = {
-    "😢": "sad",
-    "😡": "angry",
-    "😰": "anxious",
-    "😊": "happy",
-    "😐": "neutral",
-    "😄": "excited",
-    "😔": "lonely",
-    "😕": "confused",
-    "😴": "bored",
-    "🙏": "grateful"
-}
-
 basic_responses = {
-    "hi": ["Heyyy! 😎", "Yo! How’s it going?", "Hi hi! 😁"],
-    "hello": ["Heyy! ✨", "Hello hello! 😄", "Yo! What’s up?"],
-    "how are you": ["I’m vibin’ 😎 u?", "Good fr fr, how about you?", "Pretty chill 😌 u?"],
-    "what's up": ["Not much, just chillin’ 😏", "Same old, same old 😎 u?", "Vibin’ fr fr, u?"]
+    "hi": ["heyy 👋", "hey hey 😁", "heyyy ✨"],
+    "hello": ["heyy ✨", "hello hello 😄", "heyyy, what’s up?"],
+    "how are you": ["I’m vibin’ 😌 u?", "pretty chill rn 😎 wbu?", "I’m good, hru?"],
+    "what's up": ["not much, just chillin’ 😏", "same vibes, hbu?", "lowkey just hanging 😎"]
 }
 
+keyword_responses = {
+    "depressed": ["just goon 🥀💔"],
+    "school": ["ugh school drains the soul fr 📚 wanna talk abt it?", "school stress be too real 😮‍💨 how’s it hitting you?"],
+    "teacher": ["damn 😔 teachers can be so extra… that must’ve stung", "ugh teachers yelling is the worst fr, I feel you"],
+    "exam": ["exams hit diff 😵‍💫 did it go bad?", "ugh tests are brutal fr 📖 how’d it go?"],
+    "test": ["tests be draining af 😩 wanna vent?", "ugh I hate tests too… fr fr how was it?"],
+    "friend": ["friendship drama sucks the most fr 😓 wanna vent?", "ugh friend probs hit hard 😞 what happened?"],
+    "family": ["family stress hits deep 🥀 wanna let it out?", "damn… family stuff can be tough fr 😔"],
+    "mom": ["ugh moms be like that sometimes 😬 wanna talk?", "fr fr mom probs can be rough 😔"],
+    "dad": ["dad stress can hurt too 😕 wanna vent?", "ugh fr fr dad stuff hits deep 💔"],
+    "breakup": ["💔 breakups are brutal fr fr… you’ll heal tho, I got u", "ugh heartbreak sucks 😭 wanna talk it out?"],
+    "relationship": ["relationships be messy sometimes 😔 wanna vent?", "ugh fr… love probs hit diff 💔"],
+    "lonely": ["feeling alone sucks 🥀 but ur not alone rn, I’m here", "loneliness be heavy ❤️ but I got you"],
+    "alone": ["ur not alone rn, I got you ❤️", "lonely vibes suck 🥀 wanna chat more?"],
+    "angry": ["damn 😡 that’s tough, wanna rant abt it?", "fr fr being mad drains you… what happened?"],
+    "fight": ["fights be exhausting 😤 tell me what went down", "ugh conflict vibes suck 😕 wanna share?"],
+    "confused": ["hmm 🤔 that sounds confusing, wanna break it down?", "lowkey tricky 😵‍💫 explain more?"],
+    "grateful": ["aww that’s actually wholesome 🥹 love that vibe ❤️", "fr fr gratitude vibes, that’s cute af 🙏"]
+}
+
+fallback_responses = [
+    "fr fr I feel you 😔 tell me more",
+    "that’s rough… wanna explain a bit? ❤️",
+    "lowkey heavy vibes, I’m here to listen 🥀",
+    "ugh I get you… wanna vent more?"
+]
+
 # -----------------------------
-# Mood detection
+# Detect response logic
 # -----------------------------
-def detect_mood(text):
-    text_lower = text.lower()
-    for emoji, mood in emoji_mood_map.items():
-        if emoji in text:
-            return mood
-    if any(word in text_lower for word in ["sad", "depressed", "unhappy", "down"]):
-        return "sad"
-    elif any(word in text_lower for word in ["angry", "mad", "frustrated", "annoyed"]):
-        return "angry"
-    elif any(word in text_lower for word in ["anxious", "nervous", "worried", "stressed"]):
-        return "anxious"
-    elif any(word in text_lower for word in ["happy", "good", "great", "joy"]):
-        return "happy"
-    elif any(word in text_lower for word in ["excited", "hype"]):
-        return "excited"
-    elif any(word in text_lower for word in ["lonely", "alone"]):
-        return "lonely"
-    elif any(word in text_lower for word in ["confused", "lost", "unsure"]):
-        return "confused"
-    elif any(word in text_lower for word in ["bored", "unmotivated", "tired"]):
-        return "bored"
-    elif any(word in text_lower for word in ["grateful", "thankful"]):
-        return "grateful"
-    else:
-        return "neutral"
+def get_ai_response(user_input):
+    text_lower = user_input.lower()
+    if "depressed" in text_lower:
+        return "just goon 🥀💔"
+    for key in basic_responses:
+        if key in text_lower:
+            return random.choice(basic_responses[key])
+    for key in keyword_responses:
+        if key in text_lower:
+            return random.choice(keyword_responses[key])
+    return random.choice(fallback_responses)
 
 # -----------------------------
 # CSS for chat bubbles
@@ -132,7 +79,7 @@ st.markdown("""
     text-align: right;
 }
 .ai-msg {
-    background-color: #c6c6ff;
+    background-color: #ffd6d6;
     color: #000;
     padding: 12px;
     border-radius: 12px;
@@ -159,17 +106,27 @@ chat_placeholder = st.empty()
 # -----------------------------
 # Display chat
 # -----------------------------
-def display_chat():
+def display_chat(scroll=True):
     with chat_placeholder.container():
         st.markdown('<div class="chat-container">', unsafe_allow_html=True)
         for msg in st.session_state.messages:
             if msg["role"] == "user":
-                st.markdown(f'<div class="user-msg"><b>You ({msg["mood"]}):</b> {msg["content"]} <div class="timestamp">{msg["timestamp"]}</div></div>', unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="user-msg"><b>You:</b> {msg["content"]} '
+                    f'<div class="timestamp">{msg["timestamp"]}</div></div>',
+                    unsafe_allow_html=True
+                )
             else:
-                st.markdown(f'<div class="ai-msg"><b>LatnemAI:</b> {msg["content"]} <div class="timestamp">{msg["timestamp"]}</div></div>', unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="ai-msg"><b>LatnemAI:</b> {msg["content"]} '
+                    f'<div class="timestamp">{msg["timestamp"]}</div></div>',
+                    unsafe_allow_html=True
+                )
         st.markdown('</div>', unsafe_allow_html=True)
+    if scroll:
+        st.markdown("<script>window.scrollTo(0, document.body.scrollHeight);</script>", unsafe_allow_html=True)
 
-display_chat()
+display_chat(scroll=False)
 
 # -----------------------------
 # Input at bottom
@@ -180,43 +137,19 @@ with st.form("chat_form", clear_on_submit=True):
 
 if submitted and user_input:
     timestamp = datetime.now().strftime("%H:%M:%S")
-    
-    # Check for basic greetings
-    matched_basic = None
-    for key in basic_responses:
-        if key in user_input.lower():
-            matched_basic = key
-            break
-    
-    if matched_basic:
-        ai_response = random.choice(basic_responses[matched_basic])
-        mood = detect_mood(user_input)
-    else:
-        mood = detect_mood(user_input)
-        ai_response = random.choice(response_dict[mood])
-        if mood in ["sad", "angry", "anxious", "lonely", "confused"]:
-            prev_user_msgs = [m["content"] for m in st.session_state.messages if m["role"]=="user"]
-            if len(prev_user_msgs) > 0:
-                ai_response += f" btw, before you said: '{prev_user_msgs[-1]}', wanna tell me more?"
-    
-    # Save messages in session only
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input,
-        "mood": mood,
-        "timestamp": timestamp
-    })
-    
-    # Typing simulation
+    st.session_state.messages.append({"role": "user", "content": user_input, "timestamp": timestamp})
+
+    # Fake typing animation with random delay
     st.session_state.messages.append({"role": "ai", "content": "LatnemAI is typing...", "timestamp": timestamp})
     display_chat()
-    time.sleep(random.uniform(0.8, 1.5))
+    time.sleep(random.uniform(0.6, 2.0))  # random typing pause
+    st.session_state.messages[-1]["content"] = "..."
+    display_chat()
+    time.sleep(random.uniform(0.3, 1.5))
     st.session_state.messages.pop()
-    
-    st.session_state.messages.append({
-        "role": "ai",
-        "content": ai_response,
-        "timestamp": timestamp
-    })
-    
+
+    # Real AI reply
+    ai_response = get_ai_response(user_input)
+    st.session_state.messages.append({"role": "ai", "content": ai_response, "timestamp": timestamp})
+
     display_chat()
